@@ -6,73 +6,15 @@
     <title>スイカゲーム（画像版）</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
-        body {
-            margin: 0;
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: 'Arial', sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-        }
-        .game-container {
-            background: white;
-            border-radius: 20px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            margin-bottom: 20px;
-        }
-        h1 {
-            text-align: center;
-            color: #333;
-            font-size: 2.5rem;
-        }
-        #gameCanvas {
-            border: 3px solid #333;
-            border-radius: 10px;
-            background: #f0f8ff;
-            display: block;
-            margin: 0 auto;
-        }
-        .controls {
-            text-align: center;
-            margin-top: 20px;
-        }
-        .btn {
-            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            font-size: 16px;
-            border-radius: 25px;
-            cursor: pointer;
-            margin: 0 10px;
-        }
-        .score-board {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-            font-size: 18px;
-            font-weight: bold;
-        }
-        .next-fruit {
-            text-align: center;
-            margin-bottom: 10px;
-        }
-        .game-over {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.9);
-            color: white;
-            padding: 40px;
-            border-radius: 20px;
-            text-align: center;
-            display: none;
-            z-index: 1000;
-        }
+        body { margin: 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-family: 'Arial', sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        .game-container { background: white; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); margin-bottom: 20px; }
+        h1 { text-align: center; color: #333; font-size: 2.5rem; }
+        #gameCanvas { border: 3px solid #333; border-radius: 10px; background: #f0f8ff; display: block; margin: 0 auto; }
+        .controls { text-align: center; margin-top: 20px; }
+        .btn { background: linear-gradient(45deg, #ff6b6b, #ee5a24); color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 25px; cursor: pointer; margin: 0 10px; }
+        .score-board { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 18px; font-weight: bold; }
+        .next-fruit { text-align: center; margin-bottom: 10px; }
+        .game-over { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: white; padding: 40px; border-radius: 20px; text-align: center; display: none; z-index: 1000; }
     </style>
 </head>
 <body>
@@ -99,14 +41,10 @@
 
     <script>
         const { Engine, Render, World, Bodies, Events, Mouse, MouseConstraint } = Matter;
-        let engine, world, render, mouseConstraint;
-        let score = 0;
-        let highScore = localStorage.getItem('suikaHighScore') || 0;
-        let gameRunning = true;
-        let isPaused = false;
-        let currentFruitIndex = 0;
-        let nextFruitIndex = 0;
-        let dropPosition = 200;
+        let engine, world, render;
+        let score = 0, highScore = localStorage.getItem('suikaHighScore') || 0;
+        let gameRunning = true, isPaused = false;
+        let currentFruitIndex = 0, nextFruitIndex = 0, dropPosition = 200;
 
         const fruits = [
             { name: '1', image: 'img/1.png', radius: 15, points: 1 },
@@ -125,17 +63,11 @@
             engine = Engine.create();
             world = engine.world;
             engine.world.gravity.y = 0.8;
-
             render = Render.create({
                 element: document.body,
                 canvas: document.getElementById('gameCanvas'),
                 engine: engine,
-                options: {
-                    width: 400,
-                    height: 600,
-                    wireframes: false,
-                    background: 'transparent'
-                }
+                options: { width: 400, height: 600, wireframes: false, background: 'transparent' }
             });
 
             const walls = [
@@ -146,25 +78,18 @@
             World.add(world, walls);
 
             const mouse = Mouse.create(render.canvas);
-            mouseConstraint = MouseConstraint.create(engine, {
-                mouse: mouse,
-                constraint: { stiffness: 0.2, render: { visible: false } }
+            MouseConstraint.create(engine, { mouse: mouse });
+            render.canvas.addEventListener('mousemove', e => {
+                const rect = render.canvas.getBoundingClientRect();
+                dropPosition = Math.max(30, Math.min(370, e.clientX - rect.left));
             });
-            render.canvas.addEventListener('mousemove', handleMouseMove);
             render.canvas.addEventListener('click', dropFruit);
-            Events.on(engine, 'collisionStart', handleCollision);
 
+            Events.on(engine, 'collisionStart', handleCollision);
             Engine.run(engine);
             Render.run(render);
             generateNextFruit();
             updateUI();
-        }
-
-        function handleMouseMove(e) {
-            if (!gameRunning || isPaused) return;
-            const rect = render.canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            dropPosition = Math.max(30, Math.min(370, x));
         }
 
         function dropFruit() {
@@ -182,7 +107,13 @@
             const fruit = Bodies.circle(x, y, data.radius, {
                 restitution: 0.3,
                 friction: 0.8,
-                render: { sprite: { texture: data.image, xScale: 2 * data.radius / 100, yScale: 2 * data.radius / 100 } }
+                render: {
+                    sprite: {
+                        texture: data.image,
+                        xScale: 2 * data.radius / 100,
+                        yScale: 2 * data.radius / 100
+                    }
+                }
             });
             fruit.fruitIndex = index;
             fruit.label = 'fruit';
@@ -190,14 +121,12 @@
         }
 
         function generateNextFruit() {
-            nextFruitIndex = Math.floor(Math.random() * Math.min(5, fruits.length));
+            nextFruitIndex = Math.floor(Math.random() * 5);
         }
 
-        function handleCollision(event) {
+        function handleCollision(e) {
             if (!gameRunning) return;
-            const pairs = event.pairs;
-            for (let pair of pairs) {
-                const { bodyA, bodyB } = pair;
+            e.pairs.forEach(({ bodyA, bodyB }) => {
                 if (bodyA.label === 'fruit' && bodyB.label === 'fruit' && bodyA.fruitIndex === bodyB.fruitIndex && bodyA.fruitIndex < fruits.length - 1) {
                     World.remove(world, [bodyA, bodyB]);
                     const newIndex = bodyA.fruitIndex + 1;
@@ -208,38 +137,28 @@
                     score += fruits[newIndex].points;
                     updateUI();
                 }
-            }
+            });
         }
 
         function checkGameOver() {
             for (let body of world.bodies) {
                 if (body.label === 'fruit' && body.position.y < 150) {
-                    gameOver();
-                    return;
+                    gameRunning = false;
+                    if (score > highScore) {
+                        highScore = score;
+                        localStorage.setItem('suikaHighScore', highScore);
+                    }
+                    document.getElementById('finalScore').textContent = score;
+                    document.getElementById('gameOverScreen').style.display = 'block';
+                    break;
                 }
             }
         }
 
-        function gameOver() {
-            gameRunning = false;
-            if (score > highScore) {
-                highScore = score;
-                localStorage.setItem('suikaHighScore', highScore);
-            }
-            document.getElementById('finalScore').textContent = score;
-            document.getElementById('gameOverScreen').style.display = 'block';
-        }
-
         function resetGame() {
             document.getElementById('gameOverScreen').style.display = 'none';
-            const toRemove = world.bodies.filter(b => b.label === 'fruit');
-            World.remove(world, toRemove);
-            score = 0;
-            gameRunning = true;
-            isPaused = false;
-            currentFruitIndex = 0;
-            generateNextFruit();
-            updateUI();
+            World.clear(world, false);
+            initGame();
         }
 
         function togglePause() {
